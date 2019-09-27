@@ -20,7 +20,7 @@ for i in data:
     string = string + str(i)
 print (textwrap.fill(string,20))
 
-'''Lakshman'''
+'''Lakshm'''
 
 
 
