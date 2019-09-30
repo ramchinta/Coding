@@ -6,7 +6,9 @@ import glob
 
 
 '''for i in a:
-    os.remove(os.listdir(i))'''
+    os.remove(os.listdir(i))
+    b = os.path.getsize()/4
+    '''
 
 def download_file(bucketName,fileName,destFileName):
     s3 = boto3.client('s3')
