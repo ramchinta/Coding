@@ -10,39 +10,44 @@ import glob
     b = os.path.getsize()/4
     '''
 
-def download_file(bucketName,fileName,destFileName):
+def download_file(bucketName,fileName):
     s3 = boto3.client('s3')
-    s3.download_file(bucketName,fileName,destFileName)
+    s3.download_file(bucketName,fileName,fileName)
     #s3.download_file('axlpoc2','sample','Testing')
 
 
-def unzipping_file(destFileName):
-    with zipfile.ZipFile(destFileName, "r") as zip_ref:
-        zip_ref.extractall("C:\\Users\\Lakshman\\Downloads\\unzipfolder")
-    os.remove('C:\\Users\\Lakshman\\Downloads\\' + destFileName)
-
+def unzipping_file(fileName):
+    with zipfile.ZipFile(fileName, "r") as zip_ref:
+        zip_ref.extractall("unzipfolder")
+    os.remove(fileName)
 
 def split_file():
-    files = os.listdir('C:\\Users\\Lakshman\\Downloads\\unzipfolder')
+    files = os.listdir('unzipfolder')
+    print ('reading file')
+    file_size = os.path.getsize('unzipfolder/'+str(files[0]))/4
+    print(file_size)
     for i in files:
-        fs = FileSplit(i, splitsize=1684670, output_dir='C:\\Users\\Lakshman\\Downloads\\splitfiles')
+        fs = FileSplit('unzipfolder/'+i, splitsize=file_size, output_dir='splitfiles')
         fs.split()
-        os.remove('C:\\Users\\Lakshman\\Downloads\\unzipfolder\\'+i)
+        os.remove('unzipfolder/'+i)
     #fs.split(include_header=True)
 
 def zipping_file():
-    files = os.listdir('C:\\Users\\Lakshman\\Downloads\\splitfiles')
+    files = os.listdir('splitfiles')
     for i in files:
-        with zipfile.ZipFile('zippingfile\\'+i+'.zip', 'w') as zip:
-            zip.write('C:\\Users\\Lakshman\\Downloads\\splitfiles\\'+i)
-            os.remove('C:\\Users\\Lakshman\\Downloads\\splitfiles\\'+i)
+        with zipfile.ZipFile('zippingfile/'+i+'.zip', 'w') as zip:
+            zip.write('splitfiles/'+i)
+            os.remove('splitfiles/'+i)
 
 
-def upload_file():
-    files = os.listdir('C:\\Users\\Lakshman\\Downloads\\zippingfile')
+def upload_file(fileName):
+    folder = fileName.split('.')
+    folderName = folder[0]
+    files = os.listdir('zippingfile')
     for i in files:
         s3 = boto3.client('s3')
-        s3.upload_file('C:\\Users\\Lakshman\\Downloads\\zippingfile\\'+i,'axlpoc2',i)
+        s3.upload_file('zippingfile/'+i,'axlpoc2',folderName+'/'+i)
+        os.remove('zippingfile/'+i)
 
 
 
@@ -51,13 +56,15 @@ def upload_file():
 def final():
     bucketName = input('Enter Bucket Name :')
     fileName = input('Enter File Name :')
-    destFileName = input('Enter Dest File name :')
-    download_file(bucketName,fileName,destFileName)
-    #download_file('axlpoc2', 'poc2.zip', 'mytest.zip')
-    unzipping_file(destFileName)
+    #destFileName = input('Enter Dest File name :')
+    #dir = 'C:\\Users\\Lakshman\\Downloads\\'
+    #dir = "\\home\\ec2-user\\AWS-POC2\\"
+
+    download_file(bucketName,fileName)
+    unzipping_file(fileName)
     split_file()
     zipping_file()
-    #upload_file()
+    upload_file(fileName)
 
 final()
 
