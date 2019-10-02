@@ -3,6 +3,7 @@ import zipfile
 from fsplit.filesplit import FileSplit
 import os
 import glob
+import gzip
 
 
 '''for i in a:
@@ -35,9 +36,18 @@ def split_file():
 def zipping_file():
     files = os.listdir('splitfiles')
     for i in files:
-        with zipfile.ZipFile('zippingfile/'+i+'.zip', 'w') as zip:
+        input = open('splitfiles/'+i,'rb')
+        s = input.read()
+        input.close()
+        output = gzip.GzipFile('zippingfile/'+i+'.gz','wb')
+        output.write(s)
+        output.close()
+        os.remove('splitfiles/' + i)
+
+        '''with gzip.open('zippingfile/'+i+'.gz', 'w') as zip:
+        #with zipfile.ZipFile('zippingfile/'+i+'.zip', 'w') as zip:
             zip.write('splitfiles/'+i)
-            os.remove('splitfiles/'+i)
+            os.remove('splitfiles/'+i)'''
 
 
 def upload_file(fileName):
@@ -45,8 +55,10 @@ def upload_file(fileName):
     folderName = folder[0]
     files = os.listdir('zippingfile')
     for i in files:
+        f = i.split('.')
+        name = f[0]
         s3 = boto3.client('s3')
-        s3.upload_file('zippingfile/'+i,'axlpoc2',folderName+'/'+i)
+        s3.upload_file('zippingfile/'+i,'axlpoc2',folderName+'/'+name+'.gz')
         os.remove('zippingfile/'+i)
 
 
@@ -55,11 +67,15 @@ def upload_file(fileName):
 
 def final():
     bucketName = input('Enter Bucket Name :')
+    #print ('Success')
     fileName = input('Enter File Name :')
+    #print('success')
     #destFileName = input('Enter Dest File name :')
     #dir = 'C:\\Users\\Lakshman\\Downloads\\'
     #dir = "\\home\\ec2-user\\AWS-POC2\\"
 
+
+    #download_file('axlpoc2','AxelaarPoc2.zip')
     download_file(bucketName,fileName)
     unzipping_file(fileName)
     split_file()
