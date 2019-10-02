@@ -5,6 +5,8 @@ import os
 import glob
 import gzip
 from datetime import datetime
+import psycopg2
+import psycopg2.extensions
 
 '''Download zipped file from s3 to EC2'''
 def download_file(bucketName,fileName):
@@ -34,6 +36,7 @@ def split_file():
 def zipping_file():
     files = os.listdir('splitfiles')
     for i in files:
+        print(i)
         input = open('splitfiles/'+i,'rb')
         s = input.read()
         input.close()
@@ -49,7 +52,7 @@ def upload_file(fileName):
     files = os.listdir('zippingfile')
     for i in files:
         f = i.split('.')
-        name = f[0]
+        name = f[0]+f[1]
         s3 = boto3.client('s3')
         s3.upload_file('zippingfile/'+i,'axlpoc2',folderName+'/'+name+'.gz')
         os.remove('zippingfile/'+i)
@@ -60,39 +63,52 @@ def copy(bucketName,fileName):
     file = f[0]
     conn_string = "dbname='userbhv' port='5439' user='pujita' password='AxlCs*123*' host='axlpoc2rs.cphm5aouzbjy.us-east-1.redshift.amazonaws.com'"
     con = psycopg2.connect(conn_string);
-    copy_command = "copy clickstream.clickhits_1 from 's3://%s/%s/' iam_role 'arn:aws:iam::374091793621:role/redshift_to_s3_role' delimiter '\t' acceptanydate dateformat 'auto'  NULL AS 'NULL' EMPTYASNULL ESCAPE ACCEPTINVCHARS COMPUPDATE OFF STATUPDATE OFF gzip;",(bucketName,file)
+    copy_command = "copy clickstream.clickhits_1 from 's3://"+bucketName+"/"+file+"/' iam_role 'arn:aws:iam::374091793621:role/redshift_to_s3_role' delimiter '\t' acceptanydate dateformat 'auto'  NULL AS 'NULL' EMPTYASNULL ESCAPE ACCEPTINVCHARS COMPUPDATE OFF STATUPDATE OFF gzip;"
     cur = con.cursor()
     cur.execute(copy_command)
+    cur.execute("commit")
     con.close()
 
 '''Read all the new columns and update them into new table with additional two columns(startTime,fileName) and update the status in the logs table'''
 def dataMove(fileName):
     #fileName = input("Enter File Name:")
-    startTime = datetime.now()
-    fileID = fileName + startTime
-    conn_string = "dbname='userbhv' port='5439' user='pujita' password='AxlCs*123*' host='axlpoc2rs.cphm5aouzbjy.us-east-1.redshift.amazonaws.com'"
+    x = datetime.now()
+    startTime = x.strftime("%Y-%m-%d %H:%M:%S")
+    fileID = fileName + str(startTime)
+    conn_string = "dbname='userbhv' port='5439' user='lakshman' password='AxlCs*123*' host='axlpoc2rs.cphm5aouzbjy.us-east-1.redshift.amazonaws.com'"
     con = psycopg2.connect(conn_string);
+    sql5 = "delete from clickstream.clickhits_1"
     try:
-        sql1 = 'insert into clickstream.logs (fileID,fileName,startTime,endTime,status)values(%s,%s,%s,Null,1)', (
-        fileID, fileName, startTime)
-        sql2 = 'insert into clickstream.warehouse select *,%s,%s from clickstream.warehouse as a left join clickstream.clickhits as b on a.columnx = b.columnx where b.columnx IS NULL ', (
-        fileName, startTime)
+        print("Entered")
+        sql1 = ("insert into clickstream.logs (fileid,filename,starttime,endtime,status)values(%s,%s,%s,Null,1)")
+        var1 = (fileID, fileName, startTime)
+        sql2 = ("insert into clickstream.warehouse select *,%s,%s from clickstream.clickhits_1")
+        var2 = (fileName, startTime)
         cur = con.cursor()
-        cur.execute(sql1)
-        cur.execute(sql2)
-        cur.execute(sql3)
-        con.close()
+        cur.execute(sql1, var1)
+        print("sql1 executed")
+        cur.execute(sql2, var2)
+        cur.execute(sql5)
+        print("Worked fine")
+        # con.close()
     except:
-        endTime = datetime.now()
-        sql4 = 'update clickstream.logs set endTime = %s,status = 3 where fieldID = %s'(endTime, fileID)
+        y = datetime.now()
+        endTime = y.strftime("%Y-%m-%d %H:%M:%S")
+        sql4 = ("update clickstream.logs set endTime = %s,status = 3 where fileID = %s")
+        var4 = (endTime, fileID)
         cur = con.cursor()
-        cur.execute(sql4)
+        cur.execute(sql4, var4)
+        cur.execute(sql5)
+        cur.execute("commit")
         con.close()
     else:
-        endTime = datetime.now()
-        sql3 = 'update clickstream.logs set endTime = %s,status = 2 where fileID = %s', (endTime, fileID)
+        y = datetime.now()
+        endTime = y.strftime("%Y-%m-%d %H:%M:%S")
+        sql3 = ("update clickstream.logs set endTime = %s,status = 2 where fileID = %s")
+        var3 = (endTime, fileID)
         cur = con.cursor()
-        cur.execute(sql3)
+        cur.execute(sql3, var3)
+        cur.execute("commit")
         con.close()
 
 

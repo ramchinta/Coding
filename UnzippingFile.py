@@ -4,7 +4,8 @@ from fsplit.filesplit import FileSplit
 import boto3
 
 s3 = boto3.client('s3')
-s3.upload_file('C:\\Users\\Lakshman\\Documents\\GitHub\\Coding\\copy_command.py','axlpoc2','copy_command.py')
+#s3.upload_file('C:\\Users\\Lakshman\\Downloads\\site_hits_test.tsv.txt.gz','axlpoc2','site_hits_test.gz')
+s3.upload_file('C:\\Users\\Lakshman\\Documents\\GitHub\\Coding\\Integration.py','axlpoc2','Integration.py')
 
 
 

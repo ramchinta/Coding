@@ -59,6 +59,7 @@ def upload_file(fileName):
         name = f[0]
         s3 = boto3.client('s3')
         s3.upload_file('zippingfile/'+i,'axlpoc2',folderName+'/'+name+'.gz')
+
         os.remove('zippingfile/'+i)
 
 
