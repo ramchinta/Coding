@@ -3,6 +3,6 @@ import boto3
 
 def upload_file():
         s3 = boto3.client('s3')
-        s3.upload_file('C:\\Users\\Lakshman\\Downloads\\site_hits_test.zip','axlpoc2','test.zip')
+        s3.upload_file('C:\\Users\\Lakshman\\Downloads\\aa.zip','axlpoc2','input_files/aa.zip')
 
 upload_file()

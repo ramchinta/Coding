@@ -11,25 +11,37 @@ import psycopg2.extensions
 '''Download zipped file from s3 to EC2'''
 def download_file(bucketName,fileName):
     s3 = boto3.client('s3')
-    s3.download_file(bucketName,fileName,fileName)
+    s3.download_file(bucketName,"input_files/"+fileName,fileName)
     #s3.download_file('axlpoc2','sample','Testing')
 
 '''Unzip the downloaded file and save in unzipfolder then remove the downloaded file'''
 def unzipping_file(fileName):
     with zipfile.ZipFile(fileName, "r") as zip_ref:
         zip_ref.extractall("unzipfolder")
+    f = fileName.split(".")
+    file = f[0]
+
+    with zipfile.ZipFile("unzipfolder/"+file+"/site_hits.zip", "r") as zip_ref:
+        zip_ref.extractall("unzipfolder/"+file)
     os.remove(fileName)
+    split_file(file)
 
 '''Take the unzipped file split the file and save them into splitfiles folder then remove the unzipped file'''
-def split_file():
-    files = os.listdir('unzipfolder')
+def split_file(file):
+    os.remove('unzipfolder/'+file+"/site_hits.zip")
+    files = os.listdir('unzipfolder/'+file)
     print ('reading file')
-    file_size = os.path.getsize('unzipfolder/'+str(files[0]))/4
+    file_size = os.path.getsize('unzipfolder/'+file+"/"+str(files[0]))/4
     print(file_size)
+    filesrm = os.listdir('splitfiles')
+    for i in filesrm:
+        print(i)
+        os.remove('splitfiles/' + i)
+
     for i in files:
-        fs = FileSplit('unzipfolder/'+i, splitsize=file_size, output_dir='splitfiles')
+        fs = FileSplit('unzipfolder/'+file+"/"+i, splitsize=file_size, output_dir='splitfiles')
         fs.split()
-        os.remove('unzipfolder/'+i)
+        os.remove('unzipfolder/'+file+"/"+i)
     #fs.split(include_header=True)
 
 '''Take the files in splitfiles zip each file separately and save them to zippingfile with .gz extension then clear the splitfiles folder '''
@@ -46,15 +58,17 @@ def zipping_file():
         os.remove('splitfiles/' + i)
 
 '''Take all the .gz files and upload them to a folder in s3 bucket then clear zippingfile folder  '''
-def upload_file(fileName):
+def upload_file(bucketName,fileName):
     folder = fileName.split('.')
     folderName = folder[0]
     files = os.listdir('zippingfile')
+    s3 = boto3.client('s3')
+
+    #s3.put_object(Bucket=bucketName, Key=(folderName + '/'))
     for i in files:
-        f = i.split('.')
-        name = f[0]+f[1]
-        s3 = boto3.client('s3')
-        s3.upload_file('zippingfile/'+i,'axlpoc2',folderName+'/'+name+'.gz')
+        #f = i.split('.')
+        #name = f[0]+f[1]
+        s3.upload_file('zippingfile/'+i,bucketName,folderName+'/'+i)
         os.remove('zippingfile/'+i)
 
 '''Take all the uploaded files and copy them to Redshift using copy command'''
@@ -63,7 +77,7 @@ def copy(bucketName,fileName):
     file = f[0]
     conn_string = "dbname='userbhv' port='5439' user='pujita' password='AxlCs*123*' host='axlpoc2rs.cphm5aouzbjy.us-east-1.redshift.amazonaws.com'"
     con = psycopg2.connect(conn_string);
-    copy_command = "copy clickstream.clickhits_1 from 's3://"+bucketName+"/"+file+"/' iam_role 'arn:aws:iam::374091793621:role/redshift_to_s3_role' delimiter '\t' acceptanydate dateformat 'auto'  NULL AS 'NULL' EMPTYASNULL ESCAPE ACCEPTINVCHARS COMPUPDATE OFF STATUPDATE OFF gzip;"
+    copy_command = "copy clickstream.clickhits from 's3://"+bucketName+"/"+file+"/' iam_role 'arn:aws:iam::374091793621:role/redshift_to_s3_role' delimiter '\t' acceptanydate dateformat 'auto'  NULL AS 'NULL' EMPTYASNULL ESCAPE ACCEPTINVCHARS COMPUPDATE OFF STATUPDATE OFF gzip;"
     cur = con.cursor()
     cur.execute(copy_command)
     cur.execute("commit")
@@ -77,12 +91,12 @@ def dataMove(fileName):
     fileID = fileName + str(startTime)
     conn_string = "dbname='userbhv' port='5439' user='lakshman' password='AxlCs*123*' host='axlpoc2rs.cphm5aouzbjy.us-east-1.redshift.amazonaws.com'"
     con = psycopg2.connect(conn_string);
-    sql5 = "delete from clickstream.clickhits_1"
+    sql5 = "delete from clickstream.clickhits"
     try:
         print("Entered")
         sql1 = ("insert into clickstream.logs (fileid,filename,starttime,endtime,status)values(%s,%s,%s,Null,1)")
         var1 = (fileID, fileName, startTime)
-        sql2 = ("insert into clickstream.warehouse select *,%s,%s from clickstream.clickhits_1")
+        sql2 = ("insert into clickstream.warehouse select *,%s,%s from clickstream.clickhits")
         var2 = (fileName, startTime)
         cur = con.cursor()
         cur.execute(sql1, var1)
@@ -90,6 +104,7 @@ def dataMove(fileName):
         cur.execute(sql2, var2)
         cur.execute(sql5)
         print("Worked fine")
+        cur.execute("commit")
         # con.close()
     except:
         y = datetime.now()
@@ -117,14 +132,18 @@ def final():
     #print ('Success')
     fileName = input('Enter File Name :')
     download_file(bucketName,fileName)
+    print('Downloaded file')
     unzipping_file(fileName)
-    split_file()
+    print("unzipped file")
+    print("Split file")
     zipping_file()
-    upload_file(fileName)
+    print("Zipping")
+    upload_file(bucketName,fileName)
+    print("Uploaded back")
     copy(bucketName,fileName)
+    print("Copying")
     dataMove(fileName)
+    print("data moved")
 
 
 final()
-
-
