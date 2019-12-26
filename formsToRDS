@@ -1,0 +1,32 @@
+ function formResponsesToArray() {
+  var app = FormApp.openById('18UvsZv7sOJHqS1GMKEu-HNblW-UiK6ddlzPNxMHswfo'),
+  responses = app.getResponses()//, stringResponses = []
+  var ques = []
+  var response = []
+
+  responses.forEach(function(r) {
+    r.getItemResponses().forEach(function(i) {
+      if (i.getResponse()== ''){
+        response.push(0)
+      }else{
+        response.push("'".concat(i.getResponse(),"'"))
+      }
+      ques.push(i.getItem().getTitle())
+    })
+
+  })
+
+  Logger.log(ques)
+  Logger.log(response[0])
+  connect(ques,response)
+  app.deleteAllResponses()
+}
+
+function connect(ques,response){
+  var conn = Jdbc.getConnection("jdbc:mysql://database-1.cszampg2p55a.us-east-1.rds.amazonaws.com:3306/uber", "admin", "Lakshman4");
+  var stmt=conn.createStatement();
+  for(i=2;i<ques.length;i++){
+    var rs=stmt.executeUpdate("insert into test (Date,AM_PM,AnimalNumber,Yield)values(".concat(response[0],",",response[1],",'",ques[i],"',",response[i],")"));
+  }
+  conn.close();
+}
