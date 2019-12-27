@@ -1,0 +1,15 @@
+function dataMovement(){
+  var conn = Jdbc.getConnection("jdbc:mysql://organics-dairy.cjpo2qef7dkx.us-east-1.rds.amazonaws.com:3306/organicsdairy", "kotesh", "Kissaan92");
+  var stmt=conn.createStatement();
+  var ss = SpreadsheetApp.openById("1KTm97RBpYdRX6oL4qxBlAzG4uSYRLKl-yo6KIhajXz0");
+  var sheet = ss.getSheets()[0];
+  var data = sheet.getDataRange().getValues();
+  for(var i = 1; i < data.length; i++) {
+    for (var j = 3; j <=232; j++) {
+      Logger.log('Loops')
+      ab = ("insert into test (Date,AM_PM,animalNumber,yield)values('".concat(data[i][1],"','",data[i][2],"','",data[0][j],"',",data[i][j],")"));
+      Logger.log(ab)
+      var rs=stmt.executeUpdate("insert into milkProduction (date,AM_PM,animalNumber,yield)values('".concat(data[i][1],"','",data[i][2],"','",data[0][j],"',",data[i][j],")"));
+    }
+  }
+}
